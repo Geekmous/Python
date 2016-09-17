@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from scipy.misc import imread
+#!-* coding:utf-8 *-
 import scipy
 import numpy as np
 from scipy import io
@@ -66,35 +67,40 @@ def build_mlp(input_var = None) :
 def build_cnn(input_var = None):
     network = lasagne.layers.InputLayer((None, 3, 32, 32), input_var = input_var);
     #first ConvLayer
-    network = lasagne.layers.Conv2DLayer(network, num_filters = 5, filter_size=(5, 5),pad=2)
+    network = lasagne.layers.Conv2DLayer(network, num_filters = 5, filter_size=(5, 5),pad=2, W=lasagne.init.Normal(std=0.0001))
     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(3,3), stride=2)
     #second Convlayer
-    network = lasagne.layers.Conv2DLayer(network, num_filters= 5, filter_size=(5, 5), pad=2)
-    network = lasagne.layers.Pool2DLayer(network, pool_size=(3, 3), stride=2， mode='average_inc_pad')
+    network = lasagne.layers.Conv2DLayer(network, num_filters= 5, filter_size=(5, 5), pad=2, W=lasagne.init.Normal(std=0.01))
+    network = lasagne.layers.Pool2DLayer(network, pool_size=(3, 3), stride=2, mode="average_inc_pad")
     #thrid Convlayer
-    network = lasagne.layers.Conv2DLayer(network, num_filters=5, filter_size=(5, 5), pad=2)
+    network = lasagne.layers.Conv2DLayer(network, num_filters=5, filter_size=(5, 5), pad=2, W=lasagne.init.Normal(std=0.01))
     network = lasagne.layers.Pool2DLayer(network, pool_size=(3, 3), stride=2, mode='average_inc_pad')
 
 
-    network = lasagne.layers.DenseLayer(network, num_units= 64);
+    network = lasagne.layers.DenseLayer(network, num_units= 64, W=lasagne.init.Normal(std=0.1));
 
-    network = lasagne.layers.DenseLayer(network, num_units=10, nonlinearity=lasagne.nonlinearities.softmax);
+    network = lasagne.layers.DenseLayer(network, num_units=10, nonlinearity=lasagne.nonlinearities.softmax, W=lasagne.init.Normal(std=0.1));
     return network;
 
 
+def readParam() :
+        with open('./layer.txt', 'r') as input :
+            para = pickle.load(input);
+        return para
 
-
-
+para = readParam();
 inputs = T.tensor4('inputs')
 target = T.ivector('targets')
 print "Building network...."
 net_work = build_cnn(inputs)
 print "finish...."
+
+lasagne.layers.set_all_param_values(net_work, para)
 p = lasagne.layers.get_output(net_work)
 loss = lasagne.objectives.categorical_crossentropy(p, target)
 loss = loss.mean()
 params = lasagne.layers.get_all_params(net_work, trainable= True)
-updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum = 0.9)
+updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.0001, momentum=0.5)
 train_fn = theano.function([inputs, target], loss, updates=updates);
 
 test_prediction = lasagne.layers.get_output(net_work);
@@ -122,7 +128,7 @@ for epoch in range(100):
 
 
     end_time = time.time()
-    print "epoch : %s take %d" % epoch, (end_time - start_time)
+    print "epoch : %s take ", epoch, (end_time - start_time)
     print "train_loss : ", train_loss
     print "valid_loss : ", valid_loss
     print "valid_acc : ", (valid_acc / i)
@@ -132,4 +138,4 @@ with open("./layer.txt",'w') as output:
     pickle.dump(layers, output)
 with open("./layer.txt", 'r') as input:
     param = pickle.load(input)
-    print param
+    #print param
